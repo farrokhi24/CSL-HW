@@ -15,10 +15,32 @@
     
     # mod 256: keep 8 least significant bits
     andi $t4, $t4, 0xFF
+    print_hex_8($t4)
+.end_macro
+
+.macro print_hex_8(%reg)
+    # Save registers that will be modified
+    addiu $sp, $sp, -12
+    sw $a0, 0($sp)
+    sw $v0, 4($sp)
+    sw $t0, 8($sp)
     
-    move $a0, $t4
-    li $v0, 34 # print hexadecimal ## MOSHKEL INJA ##
-    syscall
+    # least significant 8 bitt
+    andi $t0, %reg, 0xFF
+    
+    # first hex digit
+    srl $a0, $t0, 4
+    jal print_hex_digit
+    
+    # second hex digit
+    andi $a0, $t0, 0x0F
+    jal print_hex_digit
+    
+    # fix registers
+    lw $t0, 8($sp)
+    lw $v0, 4($sp)
+    lw $a0, 0($sp)
+    addiu $sp, $sp, 12
 .end_macro
 
 main:
@@ -60,5 +82,19 @@ exit:
     li $v0, 10
     syscall
     
-# printed: 0x0000006b0x0000005a0x000000660x000000550x0000003a0x0000005c0x000000780x000000640x000000550x00000055
-# should be: 6b5a66553a5c78645555 (any 0x000000 removed)
+print_hex_digit:
+    # 0-9 or 10-15
+    blt $a0, 10, print_decimal
+    
+    # if 10-15 (A-F):
+    addi $a0, $a0, 87
+    j print_char
+    
+print_decimal:
+    addi $a0, $a0, 48 # to ASCII
+    
+print_char:
+    li $v0, 11 # print char
+    syscall
+    jr $ra
+    
