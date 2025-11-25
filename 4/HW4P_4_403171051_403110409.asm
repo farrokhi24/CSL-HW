@@ -1,78 +1,47 @@
 # 403171051, 403110409
 
-#######test#########
-
-.data
-    arrA:    .word 1, 2, 3, 4, 5
-    nA:      .word 5
-    arrB:    .word 6, 7, 8, 9, 10, 11
-    nB:      .word 6
-    indices: .word 2, 4, 5
-    nSwaps:  .word 3
-    lblA:    .asciiz "A: "
-    lblB:    .asciiz "B: "
-    sep:     .asciiz ", "
-    nl:      .asciiz "\n"
-
-.text
-.globl main
-
-main:
-    la $a0, arrA
-    la $a1, arrB
-    la $a2, indices
-    lw $a3, nSwaps
-    jal swap_by_indices
-    la $a0, arrA
-    lw $a1, nA
-    la $a2, lblA
-    jal print_fmt
-    la $a0, arrB
-    lw $a1, nB
-    la $a2, lblB
-    jal print_fmt
-    li $v0, 10
-    syscall
-print_fmt:
-    move $t0, $a0
-    move $t1, $a1
-    li $v0, 4
-    move $a0, $a2
-    syscall
-loop:
-    li $v0, 1
-    lw $a0, 0($t0)
-    syscall
-    addi $t0, $t0, 4
-    addi $t1, $t1, -1
-    beqz $t1, done
-    li $v0, 4
-    la $a0, sep
-    syscall
-    j loop
-done:
-    li $v0, 4
-    la $a0, nl
-    syscall
-    jr $ra
-    
-###################
-    
 swap_by_indices:
-    move $t0, $a0
-    move $t1, $a1
-    
-    # swap first index (TODO)
-    lw $t3, 0($a2)   # index to be swapped
-    sll $t3, $t3, 2  # index * 4
-    add $a0, $a0, $t3 # address of A[index]
-    lw $t2, 0($a0)   # value of A[index]
-    add $a1, $a1, $t3 # address of B[index]
-    lw $t4, 0($a1)   # value of B[index]
-    
-    sw $t2, 0($a1)   # store A value in B
-    sw $t4, 0($a0)   # store B value in A
-    
-    move $a0, $t0
-    move $a1, $t1
-    jr $ra
+    # store registers on stack: $s0, $s1, $s2, $s3, $ra
+    addi $sp, $sp, -24
+    sw $ra, 20($sp)
+    sw $s0, 16($sp)
+    sw $s1, 12($sp)
+    sw $s2, 8($sp)
+    sw $s3, 4($sp)
+
+    # parameters:
+    move $s0, $a0 # A base address
+    move $s1, $a1 # B base address
+    move $s2, $a2 # index list base address
+    move $s3, $a3 # number of swaps to be done
+
+loop:
+    beqz $s3, end # if nothing left to swap go to end
+
+    lw $t0, 0($s2) # index to be swapped in $t0
+    addi $t0, $t0, -1 # convert to zero based index
+    bltz $t0, next_index # if index >= 0
+    sll $t0, $t0, 2 # 4 * index
+
+    addu $t1, $s0, $t0 # address of A[index] in $t1
+    lw $t2, 0($t1) # value of A[index] in $t2
+    addu $t3, $s1, $t0 # address of B[index] in $t3
+    lw $t4, 0($t3) # value of B[index] in $t4
+    sw $t4, 0($t1) # store value of B[index] in address of A[index]
+    sw $t2, 0($t3) # store value of A[index] in address of B[index]
+
+next_index:
+    addi $s2, $s2, 4 # address of list[index + 1]
+    addi $s3, $s3, -1 # number of swaps left
+    j loop
+
+end:
+    # restore registers from stack:
+    lw $ra, 20($sp)
+    lw $s0, 16($sp)
+    lw $s1, 12($sp)
+    lw $s2, 8($sp)
+    lw $s3, 4($sp)
+    addi $sp, $sp, 24 # restore stack pointer
+    jr $ra # return
+    nop
