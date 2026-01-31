@@ -1,110 +1,114 @@
-global main
-extern scanf
-extern printf
-
 section .data
-    fmt_n db "%d", 0
-    fmt_p db "%lf %lf %lf", 0
+    fmt_n   db "%d", 0
+    fmt_p   db "%lf %lf %lf", 0
     fmt_out db "%.6lf", 10, 0
-    inf dq 1.0e300
+    inf     dq 1.0e300
 
 section .bss
-    N resd 1
-    points resq 300
-    min_d resq 1
+    N       resd 1
+    points  resq 300
+    min_d   resq 1
 
 section .text
+    global main
+    extern scanf
+    extern printf
+
 main:
     push rbp
     mov rbp, rsp
-    sub rsp, 32
+    push rbx
+    push r12
 
-    lea rdi, [rel fmt_n]
-    lea rsi, [rel N]
+    lea rdi, [fmt_n]
+    lea rsi, [N]
     xor eax, eax
     call scanf
 
-    lea r12, [rel points]
-
-    xor r13d, r13d
+    xor r12, r12
 .read_loop:
-    cmp r13d, [rel N]
-    jge .read_done
+    mov eax, [N]
+    cmp r12d, eax
+    jge .init_min
 
-    mov rax, r13
+    mov rax, r12
     imul rax, 24
+    lea rbx, [points + rax]
 
-    lea rdi, [rel fmt_p]
-    lea rsi, [r12 + rax]
-    lea rdx, [r12 + rax + 8]
-    lea rcx, [r12 + rax + 16]
+    lea rdi, [fmt_p]
+    lea rsi, [rbx]
+    lea rdx, [rbx + 8]
+    lea rcx, [rbx + 16]
     xor eax, eax
     call scanf
 
-    inc r13d
+    inc r12
     jmp .read_loop
 
-.read_done:
-    movsd xmm0, [rel inf]
-    movsd [rel min_d], xmm0
+.init_min:
+    movsd xmm0, [inf]
+    movsd [min_d], xmm0
 
-    xor r8d, r8d
-.outer_loop:
-    cmp r8d, [rel N]
-    jge .print_result
+    xor r8, r8
+.outer:
+    mov eax, [N]
+    cmp r8d, eax
+    jge .print_res
 
-    mov r9d, r8d
-    inc r9d
-
-.inner_loop:
-    cmp r9d, [rel N]
+    mov r9, r8
+    inc r9
+.inner:
+    mov eax, [N]
+    cmp r9d, eax
     jge .next_i
 
     mov rax, r8
     imul rax, 24
+    lea rsi, [points + rax]
 
     mov rbx, r9
     imul rbx, 24
+    lea rdi, [points + rbx]
 
-    movsd xmm0, [r12 + rax]
-    movsd xmm1, [r12 + rax + 8]
-    movsd xmm2, [r12 + rax + 16]
-
-    movsd xmm3, [r12 + rbx]
-    movsd xmm4, [r12 + rbx + 8]
-    movsd xmm5, [r12 + rbx + 16]
-
-    subsd xmm0, xmm3
+    movsd xmm0, [rsi]
+    subsd xmm0, [rdi]
     mulsd xmm0, xmm0
 
-    subsd xmm1, xmm4
+    movsd xmm1, [rsi + 8]
+    subsd xmm1, [rdi + 8]
     mulsd xmm1, xmm1
 
-    subsd xmm2, xmm5
+    movsd xmm2, [rsi + 16]
+    subsd xmm2, [rdi + 16]
     mulsd xmm2, xmm2
 
     addsd xmm0, xmm1
     addsd xmm0, xmm2
     sqrtsd xmm0, xmm0
 
-    movsd xmm6, [rel min_d]
+    movsd xmm6, [min_d]
     ucomisd xmm0, xmm6
-    jae .skip_update
-    movsd [rel min_d], xmm0
+    jae .skip_upd
+    movsd [min_d], xmm0
 
-.skip_update:
-    inc r9d
-    jmp .inner_loop
+.skip_upd:
+    inc r9
+    jmp .inner
 
 .next_i:
-    inc r8d
-    jmp .outer_loop
+    inc r8
+    jmp .outer
 
-.print_result:
-    lea rdi, [rel fmt_out]
-    movsd xmm0, [rel min_d]
+.print_res:
+    lea rdi, [fmt_out]
+    movsd xmm0, [min_d]
     mov eax, 1
     call printf
 
-    leave
+    xor eax, eax
+    pop r12
+    pop rbx
+    pop rbp
     ret
+
+section .note.GNU-stack noalloc noexec nowrite progbits
